@@ -2,6 +2,8 @@
 #include <string.h>
 #include <ncurses.h>
 
+enum state { RUNNING, LOST, WON, QUIT };
+
 int pos(int x, int y, int size_y) {
 	return size_y*x + y;
 }
@@ -55,6 +57,17 @@ void search(char* field, int x, int y, int size_x, int size_y) {
 	}
 }
 
+bool cleared(char* field, int size_x, int size_y) {
+	int i;
+
+	for (i=0; i < size_x * size_y; ++i) {
+		if (abs(field[i]) == '.' || field[i] == 'f')
+			return false;
+	}
+
+	return true;
+}
+
 int main() {
 	initscr();
 	raw();
@@ -62,10 +75,11 @@ int main() {
 	curs_set(2);
 	keypad(stdscr, TRUE);
 
-	int running = TRUE;
+	int state = RUNNING;
 	int size_x = 12;
 	int size_y = 8;
 
+	int mines = 0;
 	int i, x, y;
 	x=y=0;
 
@@ -73,11 +87,13 @@ int main() {
 
 	for (i=0; i < size_x * size_y; ++i) {
 		field[i] = '.';
-		if (rand() % 13 == 0)
+		if (rand() % 6 == 0) {
 			field[i] *= -1;
+			++mines;
+		}
 	}
 
-	while (running) {
+	while (state == RUNNING) {
 		print_field(field, size_x, size_y);
 		mvprintw(1, 14, "%d, %d", x, y);
 		mvprintw(2, 14, "%c", field[pos(y, x, size_x)] < 0 ? 'B' : ' ');
@@ -104,28 +120,55 @@ int main() {
 			if (x < size_x - 1)
 				++x;
 			break;
-		case 'b':
+		case '\n':
 			if (field[i] < 0) {
 				for (i = 0; i < size_x * size_y; ++i)
 					if (field[i] < 0)
 						field[i] = 'X';
+				state = LOST;
 			} else {
 				search(field, x, y, size_x, size_y);
+				if (mines == 0 && cleared(field, size_x, size_y))
+					state = WON;
 			}
 			break;
 		case ' ':
 			neg = field[i] < 0 ? -1 : 1;
-			if (abs(field[i]) == '.')
+			if (abs(field[i]) == '.') {
 				field[i] = 'f' * neg;
-			else if (abs(field[i]) == 'f')
+				if (field[i] < 0)
+					--mines;
+				if (mines == 0 && cleared(field, size_x, size_y))
+					state = WON;
+			} else if (abs(field[i]) == 'f') {
 				field[i] = '.' * neg;
+				if (field[i] < 0)
+					++mines;
+			}
 			break;
 		case 'q':
-			running = FALSE;
+			state = QUIT;
 			break;
 		}
 
 		refresh();
+	}
+
+	switch (state) {
+	case WON:
+		mvprintw(3, 14, ":-)");
+		refresh();
+		getch();
+
+		break;
+	case LOST:
+		mvprintw(3, 14, ":-(");
+		refresh();
+		getch();
+
+		break;
+	case QUIT:
+		break;
 	}
 
 	endwin();

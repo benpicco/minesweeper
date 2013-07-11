@@ -1,2 +1,2 @@
 mines: mines.c
-	gcc mines.c -lncurses -o mines
+	gcc -Wall mines.c -lncurses -o mines
