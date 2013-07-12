@@ -85,7 +85,7 @@ void timer_tick(int x) {
 	refresh();
 }
 
-int main() {
+int main(int argc, char** argv) {
 	initscr();
 	raw();
 	noecho();
@@ -97,6 +97,11 @@ int main() {
 	int state = RUNNING;
 	int size_x = 12;
 	int size_y = 8;
+
+	if (argc > 1)
+		size_x = atoi(argv[1]);
+	if (argc > 2)
+		size_y = atoi(argv[2]);
 
 	int mines = 0;
 	int i, x, y;
