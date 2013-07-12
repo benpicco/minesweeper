@@ -1,6 +1,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ncurses.h>
+#include <signal.h>
+#include <sys/time.h>
 
 enum state { RUNNING, LOST, WON, QUIT };
 
@@ -11,12 +13,14 @@ int pos(int x, int y, int size_y) {
 	return size_y*x + y;
 }
 
-void print_field(char* field, int size_x, int size_y) {
-	int x, y;
+void print_field(int current_pos, char* field, int size_x, int size_y) {
+	int i, x, y;
 
 	for (x = 0; x < size_x; ++x)
-		for (y=0; y < size_y; ++y)
-			mvprintw(y, x, "%c", abs(field[pos(y,x, size_x)]));
+		for (y=0; y < size_y; ++y) {
+			i = pos(y, x, size_x);
+			mvaddch(y, x, abs(field[i]) | (i == current_pos ? A_STANDOUT : 0));
+		}
 }
 
 void search(char* field, int x, int y, int size_x, int size_y) {
@@ -67,11 +71,25 @@ bool cleared(char* field, int size_x, int size_y) {
 	return true;
 }
 
+static int elapsed_time = 0;
+void timer_tick(int x) {
+	static int size_x = -1;
+
+	if (size_x < 0)
+		size_x = x;
+
+	struct itimerval tout_val = {.it_value.tv_sec = 1};
+	setitimer(ITIMER_REAL, &tout_val, 0);
+
+	mvprintw(6, size_x + 2, "%d", elapsed_time++);
+	refresh();
+}
+
 int main() {
 	initscr();
 	raw();
 	noecho();
-	curs_set(2);
+	curs_set(0);
 	keypad(stdscr, true);
 	mousemask(BUTTON1_RELEASED | BUTTON3_RELEASED, 0);
 	MEVENT event;
@@ -94,11 +112,13 @@ int main() {
 		}
 	}
 
-	while (state == RUNNING) {
-		print_field(field, size_x, size_y);
-		mvprintw(1, size_x + 2, "%d, %d", x, y);
-		mvprintw(2, size_x + 2, "%c", field[pos(y, x, size_x)] < 0 ? 'B' : ' ');
+	signal(SIGALRM, timer_tick);
+	timer_tick(size_x);
 
+	while (state == RUNNING) {
+		mvprintw(1, size_x + 2, "%d, %d", x, y);
+
+		print_field(pos(y, x, size_x), field, size_x, size_y);
 		move(y,x);
 
 		int c = getch();
@@ -169,7 +189,10 @@ int main() {
 		refresh();
 	}
 
-	print_field(field, size_x, size_y);
+	print_field(-1, field, size_x, size_y);
+
+	struct itimerval tout_val = {{0}};	// stop timer
+	setitimer(ITIMER_REAL, &tout_val, 0);
 
 	switch (state) {
 	case WON:
