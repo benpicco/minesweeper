@@ -14,11 +14,9 @@ int pos(int x, int y, int size_y) {
 void print_field(char* field, int size_x, int size_y) {
 	int x, y;
 
-	for (x = 0; x < size_x; ++x) {
-		for (y=0; y < size_y; ++y) {
+	for (x = 0; x < size_x; ++x)
+		for (y=0; y < size_y; ++y)
 			mvprintw(y, x, "%c", abs(field[pos(y,x, size_x)]));
-		}
-	}
 }
 
 void search(char* field, int x, int y, int size_x, int size_y) {
@@ -66,7 +64,6 @@ bool cleared(char* field, int size_x, int size_y) {
 	for (i=0; i < size_x * size_y; ++i)
 		if (abs(field[i]) == '.' || field[i] == 'f')
 			return false;
-
 	return true;
 }
 
@@ -76,7 +73,7 @@ int main() {
 	noecho();
 	curs_set(2);
 	keypad(stdscr, true);
-	mousemask(BUTTON1_RELEASED | BUTTON2_RELEASED, 0);
+	mousemask(BUTTON1_RELEASED | BUTTON3_RELEASED, 0);
 	MEVENT event;
 
 	int state = RUNNING;
@@ -104,7 +101,6 @@ int main() {
 
 		move(y,x);
 
-		i=pos(y, x, size_x);
 		int c = getch();
 		int neg;
 		switch (c) {
@@ -131,12 +127,13 @@ int main() {
 
 				if (event.bstate & BUTTON1_RELEASED)
 					goto mine;
-				if (event.bstate & BUTTON2_RELEASED)
+				if (event.bstate & BUTTON3_RELEASED)
 					goto flag;
 			}
 			break;
 		case BTN_MINE:
 		mine:
+			i = pos(y, x, size_x);
 			if (field[i] < 0) {
 				for (i = 0; i < size_x * size_y; ++i)
 					if (field[i] < 0)
@@ -150,6 +147,7 @@ int main() {
 			break;
 		case BTN_FLAG:
 		flag:
+			i = pos(y, x, size_x);
 			neg = field[i] < 0 ? -1 : 1;
 			if (abs(field[i]) == '.') {
 				field[i] = 'f' * neg;
@@ -170,6 +168,8 @@ int main() {
 
 		refresh();
 	}
+
+	print_field(field, size_x, size_y);
 
 	switch (state) {
 	case WON:
