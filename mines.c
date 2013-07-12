@@ -25,7 +25,7 @@ void print_field(int current_pos, char* field, int size_x, int size_y) {
 
 void search(char* field, int x, int y, int size_x, int size_y) {
 	int i = pos(y, x, size_x);
-	if (abs(field[i]) != '.')
+	if (field[i] != '.')
 		return;
 
 	int count = 0;
@@ -81,7 +81,7 @@ void timer_tick(int x) {
 	struct itimerval tout_val = {.it_value.tv_sec = 1};
 	setitimer(ITIMER_REAL, &tout_val, 0);
 
-	mvprintw(6, size_x + 2, "%d", elapsed_time++);
+	mvprintw(2, size_x + 2, "%d sec", elapsed_time++);
 	refresh();
 }
 
