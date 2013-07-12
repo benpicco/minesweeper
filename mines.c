@@ -4,6 +4,9 @@
 
 enum state { RUNNING, LOST, WON, QUIT };
 
+#define BTN_MINE	'\n'
+#define BTN_FLAG	' '
+
 int pos(int x, int y, int size_y) {
 	return size_y*x + y;
 }
@@ -60,10 +63,9 @@ void search(char* field, int x, int y, int size_x, int size_y) {
 bool cleared(char* field, int size_x, int size_y) {
 	int i;
 
-	for (i=0; i < size_x * size_y; ++i) {
+	for (i=0; i < size_x * size_y; ++i)
 		if (abs(field[i]) == '.' || field[i] == 'f')
 			return false;
-	}
 
 	return true;
 }
@@ -73,7 +75,9 @@ int main() {
 	raw();
 	noecho();
 	curs_set(2);
-	keypad(stdscr, TRUE);
+	keypad(stdscr, true);
+	mousemask(BUTTON1_RELEASED | BUTTON2_RELEASED, 0);
+	MEVENT event;
 
 	int state = RUNNING;
 	int size_x = 12;
@@ -95,8 +99,8 @@ int main() {
 
 	while (state == RUNNING) {
 		print_field(field, size_x, size_y);
-		mvprintw(1, 14, "%d, %d", x, y);
-		mvprintw(2, 14, "%c", field[pos(y, x, size_x)] < 0 ? 'B' : ' ');
+		mvprintw(1, size_x + 2, "%d, %d", x, y);
+		mvprintw(2, size_x + 2, "%c", field[pos(y, x, size_x)] < 0 ? 'B' : ' ');
 
 		move(y,x);
 
@@ -120,7 +124,19 @@ int main() {
 			if (x < size_x - 1)
 				++x;
 			break;
-		case '\n':
+		case KEY_MOUSE:
+			if(getmouse(&event) == OK && event.x < size_x && event.y < size_y) {
+				x = event.x;
+				y = event.y;
+
+				if (event.bstate & BUTTON1_RELEASED)
+					goto mine;
+				if (event.bstate & BUTTON2_RELEASED)
+					goto flag;
+			}
+			break;
+		case BTN_MINE:
+		mine:
 			if (field[i] < 0) {
 				for (i = 0; i < size_x * size_y; ++i)
 					if (field[i] < 0)
@@ -132,7 +148,8 @@ int main() {
 					state = WON;
 			}
 			break;
-		case ' ':
+		case BTN_FLAG:
+		flag:
 			neg = field[i] < 0 ? -1 : 1;
 			if (abs(field[i]) == '.') {
 				field[i] = 'f' * neg;
@@ -156,13 +173,13 @@ int main() {
 
 	switch (state) {
 	case WON:
-		mvprintw(3, 14, ":-)");
+		mvprintw(3, size_x + 2, ":-)");
 		refresh();
 		getch();
 
 		break;
 	case LOST:
-		mvprintw(3, 14, ":-(");
+		mvprintw(3, size_x + 2, ":-(");
 		refresh();
 		getch();
 
