@@ -9,11 +9,11 @@ enum state { RUNNING, LOST, WON, QUIT };
 #define BTN_MINE	'\n'
 #define BTN_FLAG	' '
 
-int pos(int x, int y, int size_y) {
+static int pos(int x, int y, int size_y) {
 	return size_y*x + y;
 }
 
-void print_field(int current_pos, char* field, int size_x, int size_y) {
+static void print_field(int current_pos, char* field, int size_x, int size_y) {
 	int i, x, y;
 
 	for (x = 0; x < size_x; ++x)
@@ -23,7 +23,7 @@ void print_field(int current_pos, char* field, int size_x, int size_y) {
 		}
 }
 
-void search(char* field, int x, int y, int size_x, int size_y) {
+static void search(char* field, int x, int y, int size_x, int size_y) {
 	int i = pos(y, x, size_x);
 	if (field[i] != '.')
 		return;
@@ -62,7 +62,7 @@ void search(char* field, int x, int y, int size_x, int size_y) {
 	}
 }
 
-bool cleared(char* field, int size_x, int size_y) {
+static bool cleared(char* field, int size_x, int size_y) {
 	int i;
 
 	for (i=0; i < size_x * size_y; ++i)
@@ -71,8 +71,8 @@ bool cleared(char* field, int size_x, int size_y) {
 	return true;
 }
 
-static int elapsed_time = 0;
-void timer_tick(int x) {
+static void timer_tick(int x) {
+	static int elapsed_time = 0;
 	static int size_x = -1;
 
 	if (size_x < 0)
@@ -85,29 +85,11 @@ void timer_tick(int x) {
 	refresh();
 }
 
-int main(int argc, char** argv) {
-	initscr();
-	raw();
-	noecho();
-	curs_set(0);
-	keypad(stdscr, true);
-	mousemask(BUTTON1_RELEASED | BUTTON3_RELEASED, 0);
+static int game_loop(char* field, int size_x, int size_y) {
 	MEVENT event;
-
-	int state = RUNNING;
-	int size_x = 12;
-	int size_y = 8;
-
-	if (argc > 1)
-		size_x = atoi(argv[1]);
-	if (argc > 2)
-		size_y = atoi(argv[2]);
-
 	int mines = 0;
 	int i, x, y;
 	x=y=0;
-
-	char* field = calloc(size_x * size_y, sizeof(char));
 
 	for (i=0; i < size_x * size_y; ++i) {
 		field[i] = '.';
@@ -117,9 +99,7 @@ int main(int argc, char** argv) {
 		}
 	}
 
-	signal(SIGALRM, timer_tick);
-	timer_tick(size_x);
-
+	int state = RUNNING;
 	while (state == RUNNING) {
 		mvprintw(1, size_x + 2, "%d, %d", x, y);
 
@@ -195,6 +175,33 @@ int main(int argc, char** argv) {
 	}
 
 	print_field(-1, field, size_x, size_y);
+
+	return state;
+}
+
+int main(int argc, char** argv) {
+	initscr();
+	raw();
+	noecho();
+	curs_set(0);
+	keypad(stdscr, true);
+	mousemask(BUTTON1_RELEASED | BUTTON3_RELEASED, 0);
+
+	int state = RUNNING;
+	int size_x = 12;
+	int size_y = 8;
+
+	if (argc > 1)
+		size_x = atoi(argv[1]);
+	if (argc > 2)
+		size_y = atoi(argv[2]);
+
+	char* field = calloc(size_x * size_y, sizeof(char));
+
+	signal(SIGALRM, timer_tick);
+	timer_tick(size_x); // start timer
+
+	state = game_loop(field, size_x, size_y);
 
 	struct itimerval tout_val = {{0}};	// stop timer
 	setitimer(ITIMER_REAL, &tout_val, 0);

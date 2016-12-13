@@ -1,2 +1,3 @@
 mines: mines.c
-	gcc -Wall mines.c -lrt -lncurses -o mines
+	gcc -Os -Wall mines.c -lrt -lncurses -o mines
+	size mines
